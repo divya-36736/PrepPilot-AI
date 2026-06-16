@@ -1,10 +1,20 @@
 import axios from "axios";
 
-const api = axios.create({
-    baseURL: "http://localhost:3000",
-    withCredentials: true,
-})
+// const api = axios.create({
+//     baseURL: "http://localhost:3000",
+//     withCredentials: true,
+// })
 
+
+// Sirf root URL set karein, kyunki functions ke andar "/api/..." already likha hai
+const backendUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
+const api = axios.create({
+    baseURL: backendUrl, 
+    withCredentials: true,
+});
+
+// ... baaki ka poora code (generateInterviewReport, getInterviewReportById, etc.) bilkul same rahega
 
 /**
  * @description Service to generate interview report based on user self description, resume and job description.
