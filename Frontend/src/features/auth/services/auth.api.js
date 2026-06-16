@@ -2,13 +2,26 @@ import axios from "axios";
 
 // 1. Create the instance. 
 // Pro-tip: Let's include '/api/auth' in the baseURL to save even more typing!
-// import axios from "axios";
+
 
 // 1. Create the instance with the FULL backend URL
+// const api = axios.create({
+//     baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000/api/auth", // Explicitly point to the backend
+//     withCredentials: true // Crucial: Ensures cookies are sent with the request
+// });
+
+
+
+// Pehle base URL decide karo
+const backendUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000/api/auth", // Explicitly point to the backend
-    withCredentials: true // Crucial: Ensures cookies are sent with the request
+    // Ab dono cases mein '/api/auth' zaroor add hoga
+    baseURL: `${backendUrl}/api/auth`, 
+    withCredentials: true 
 });
+
+export default api;
 
 // ... the rest of your register, login, logout functions remain exactly the same
 
