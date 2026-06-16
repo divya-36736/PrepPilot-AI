@@ -337,28 +337,28 @@ async function generatePdfFromHtml(htmlContent) {
     return pdfBuffer
 }
 
-// Normalize links in HTML so PDFs created by Puppeteer have proper link annotations.
-function normalizeLinksInHtml(html) {
-    if (!html || typeof html !== 'string') return html;
+// // Normalize links in HTML so PDFs created by Puppeteer have proper link annotations.
+// function normalizeLinksInHtml(html) {
+//     if (!html || typeof html !== 'string') return html;
 
-    // 1) Ensure all anchor hrefs have a protocol (skip mailto:)
-    html = html.replace(/href="(?!https?:|mailto:)([^"]+)"/gi, (m, p1) => {
-        // prepend https if missing
-        return `href="https://${p1.replace(/^\/+/, '')}"`;
-    });
+//     // 1) Ensure all anchor hrefs have a protocol (skip mailto:)
+//     html = html.replace(/href="(?!https?:|mailto:)([^"]+)"/gi, (m, p1) => {
+//         // prepend https if missing
+//         return `href="https://${p1.replace(/^\/+/, '')}"`;
+//     });
 
-    // 2) Convert bare URLs (github.com, leetcode.com, www., http(s)://) into anchor tags
-    // This will skip existing anchors because they contain href=" which we've already handled above.
-    const urlRegex = /(?:(https?:\/\/)?(www\.|github\.com\/|leetcode\.com\/)[\w\-._~:\/?#\[\]@!$&'()*+,;=%]+)/gi;
-    html = html.replace(urlRegex, (match) => {
-        // if already inside an anchor tag, leave it (simple heuristic)
-        // (This regex replacement runs on HTML string; it's possible it may wrap inside tags in edge cases.)
-        const href = match.match(/^https?:\/\//i) ? match : `https://${match}`;
-        return `<a href="${href}" target="_blank" rel="noopener noreferrer">${match}</a>`;
-    });
+//     // 2) Convert bare URLs (github.com, leetcode.com, www., http(s)://) into anchor tags
+//     // This will skip existing anchors because they contain href=" which we've already handled above.
+//     const urlRegex = /(?:(https?:\/\/)?(www\.|github\.com\/|leetcode\.com\/)[\w\-._~:\/?#\[\]@!$&'()*+,;=%]+)/gi;
+//     html = html.replace(urlRegex, (match) => {
+//         // if already inside an anchor tag, leave it (simple heuristic)
+//         // (This regex replacement runs on HTML string; it's possible it may wrap inside tags in edge cases.)
+//         const href = match.match(/^https?:\/\//i) ? match : `https://${match}`;
+//         return `<a href="${href}" target="_blank" rel="noopener noreferrer">${match}</a>`;
+//     });
 
-    return html;
-}
+//     return html;
+// }
 
 async function generateResumePdf({ resume, selfDescription, jobDescription }) {
 
