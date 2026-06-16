@@ -6,7 +6,7 @@ import axios from "axios";
 
 // 1. Create the instance with the FULL backend URL
 const api = axios.create({
-    baseURL: "http://localhost:3000/api/auth", // Explicitly point to the backend
+    baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000/api/auth", // Explicitly point to the backend
     withCredentials: true // Crucial: Ensures cookies are sent with the request
 });
 
