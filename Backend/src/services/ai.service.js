@@ -318,47 +318,71 @@ async function generateInterviewReport({ resume, selfDescription, jobDescription
     }
 }
 
+// async function generatePdfFromHtml(htmlContent) {
+//     const browser = await puppeteer.launch()
+//     const page = await browser.newPage();
+//     await page.setContent(htmlContent, { waitUntil: "networkidle0" })
+
+//     const pdfBuffer = await page.pdf({
+//         format: "A4", margin: {
+//             top: "20mm",
+//             bottom: "20mm",
+//             left: "15mm",
+//             right: "15mm"
+//         }
+//     })
+
+//     await browser.close()
+
+//     return pdfBuffer
+// }
+
 async function generatePdfFromHtml(htmlContent) {
-    const browser = await puppeteer.launch()
+    // Cloud server (Render) par Puppeteer chalane ke liye args dena bahut zaroori hai
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: [
+            '--no-sandbox', 
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage' // Ye low-RAM servers ko crash hone se bachata hai
+        ]
+    });
+    
     const page = await browser.newPage();
-    await page.setContent(htmlContent, { waitUntil: "networkidle0" })
+    await page.setContent(htmlContent, { waitUntil: "networkidle0" });
 
     const pdfBuffer = await page.pdf({
-        format: "A4", margin: {
-            top: "20mm",
-            bottom: "20mm",
-            left: "15mm",
-            right: "15mm"
-        }
-    })
+        format: "A4", 
+        margin: { top: "20mm", bottom: "20mm", left: "15mm", right: "15mm" }
+    });
 
-    await browser.close()
+    await browser.close();
 
-    return pdfBuffer
+    return pdfBuffer;
 }
 
-// // Normalize links in HTML so PDFs created by Puppeteer have proper link annotations.
-// function normalizeLinksInHtml(html) {
-//     if (!html || typeof html !== 'string') return html;
+// Normalize links in HTML so PDFs created by Puppeteer have proper link annotations.
+function normalizeLinksInHtml(html) {
+    if (!html || typeof html !== 'string') return html;
 
-//     // 1) Ensure all anchor hrefs have a protocol (skip mailto:)
-//     html = html.replace(/href="(?!https?:|mailto:)([^"]+)"/gi, (m, p1) => {
-//         // prepend https if missing
-//         return `href="https://${p1.replace(/^\/+/, '')}"`;
-//     });
+    // 1) Ensure all anchor hrefs have a protocol (skip mailto:)
+    html = html.replace(/href="(?!https?:|mailto:)([^"]+)"/gi, (m, p1) => {
+        // prepend https if missing
+        return `href="https://${p1.replace(/^\/+/, '')}"`;
+    });
 
-//     // 2) Convert bare URLs (github.com, leetcode.com, www., http(s)://) into anchor tags
-//     // This will skip existing anchors because they contain href=" which we've already handled above.
-//     const urlRegex = /(?:(https?:\/\/)?(www\.|github\.com\/|leetcode\.com\/)[\w\-._~:\/?#\[\]@!$&'()*+,;=%]+)/gi;
-//     html = html.replace(urlRegex, (match) => {
-//         // if already inside an anchor tag, leave it (simple heuristic)
-//         // (This regex replacement runs on HTML string; it's possible it may wrap inside tags in edge cases.)
-//         const href = match.match(/^https?:\/\//i) ? match : `https://${match}`;
-//         return `<a href="${href}" target="_blank" rel="noopener noreferrer">${match}</a>`;
-//     });
+    // 2) Convert bare URLs (github.com, leetcode.com, www., http(s)://) into anchor tags
+    // This will skip existing anchors because they contain href=" which we've already handled above.
+    const urlRegex = /(?:(https?:\/\/)?(www\.|github\.com\/|leetcode\.com\/)[\w\-._~:\/?#\[\]@!$&'()*+,;=%]+)/gi;
+    html = html.replace(urlRegex, (match) => {
+        // if already inside an anchor tag, leave it (simple heuristic)
+        // (This regex replacement runs on HTML string; it's possible it may wrap inside tags in edge cases.)
+        const href = match.match(/^https?:\/\//i) ? match : `https://${match}`;
+        return `<a href="${href}" target="_blank" rel="noopener noreferrer">${match}</a>`;
+    });
 
-//     return html;
-// }
+    return html;
+}
 
 // async function generateResumePdf({ resume, selfDescription, jobDescription }) {
 
@@ -400,32 +424,93 @@ async function generatePdfFromHtml(htmlContent) {
 
 // }
 
+// async function generateResumePdf({ resume, selfDescription, jobDescription }) {
+
+//     const resumePdfSchema = z.object({
+//         html: z.string().describe("The HTML content of the resume which can be converted to PDF using any library like puppeteer")
+//     })
+
+//     const prompt = `Generate resume for a candidate with the following details:
+//                         Resume: ${resume}
+//                         Self Description: ${selfDescription}
+//                         Job Description: ${jobDescription}
+
+//                         The response should be a JSON object with a single field "html" which contains the HTML content of the resume which can be converted to PDF using any library like puppeteer.
+                        
+//                         CRITICAL INSTRUCTION FOR LINKS: Make sure all URLs, emails, and profile links (like LinkedIn, GitHub, LeetCode, Portfolios) are wrapped in proper HTML anchor tags. 
+//                         Example: <a href="https://github.com/username">GitHub</a>. Do not just output raw text URLs.
+
+//                         The resume should be tailored for the given job description and should highlight the candidate's strengths and relevant experience. The HTML content should be well-formatted and structured, making it easy to read and visually appealing.
+//                         The content of resume should be not sound like it's generated by AI and should be as close as possible to a real human-written resume.
+//                         you can highlight the content using some colors or different font styles but the overall design should be simple and professional.
+//                         The content should be ATS friendly, i.e. it should be easily parsable by ATS systems without losing important information.
+//                         The resume should not be so lengthy, it should ideally be 1-2 pages long when converted to PDF. Focus on quality rather than quantity and make sure to include all the relevant information that can increase the candidate's chances of getting an interview call for the given job description.
+//                     `
+
+//     try {
+//         const response = await ai.models.generateContent({
+//             model: "gemini-3-flash-preview",
+//             contents: prompt,
+//             config: {
+//                 responseMimeType: "application/json",
+//                 responseSchema: zodToJsonSchema(resumePdfSchema),
+//             }
+//         });
+
+//         const jsonContent = JSON.parse(response.text);
+
+//         // Normalize links added by the AI so they become clickable in the generated PDF
+//         const safeHtml = normalizeLinksInHtml(jsonContent.html);
+
+//         const pdfBuffer = await generatePdfFromHtml(safeHtml);
+
+//         return pdfBuffer;
+
+//     } catch (error) {
+//         // Handle Gemini 503 High Demand Error gracefully
+//         if (error.status === 503 || (error.message && error.message.includes("high demand"))) {
+//             console.error("⚠️ AI is currently busy:", error.message);
+//             throw new Error("AI is currently very busy due to high demand. Please wait a few minutes and try downloading again.");
+//         } 
+        
+//         // Log other unexpected errors
+//         console.error("❌ An unexpected error occurred during PDF generation:", error.message);
+//         throw error;
+//     }
+// }
+
 async function generateResumePdf({ resume, selfDescription, jobDescription }) {
 
     const resumePdfSchema = z.object({
         html: z.string().describe("The HTML content of the resume which can be converted to PDF using any library like puppeteer")
     })
 
-    const prompt = `Generate resume for a candidate with the following details:
-                        Resume: ${resume}
-                        Self Description: ${selfDescription}
-                        Job Description: ${jobDescription}
+    // 1. NAYA PROMPT (Strict CSS aur Formatting ke sath)
+    const prompt = `Generate a highly professional, ATS-friendly resume for a candidate based on the following details:
+                    Resume Data: ${resume}
+                    Self Description: ${selfDescription}
+                    Job Description: ${jobDescription}
 
-                        The response should be a JSON object with a single field "html" which contains the HTML content of the resume which can be converted to PDF using any library like puppeteer.
-                        
-                        CRITICAL INSTRUCTION FOR LINKS: Make sure all URLs, emails, and profile links (like LinkedIn, GitHub, LeetCode, Portfolios) are wrapped in proper HTML anchor tags. 
-                        Example: <a href="https://github.com/username">GitHub</a>. Do not just output raw text URLs.
+                    The response MUST be a JSON object with a single field "html". This field should contain the COMPLETE and well-formatted HTML content of the resume.
+                    
+                    CRITICAL HTML & STYLING INSTRUCTIONS (DO NOT IGNORE):
+                    1. INJECT INLINE CSS: Use a clean, modern, and professional font family (like 'Inter', 'Segoe UI', Arial, sans-serif). 
+                    2. Add proper padding and margins between sections (Education, Skills, Experience). 
+                    3. Make section headings bold, slightly larger, and give them a professional accent color (e.g., dark blue #1e3a8a or dark grey #333) with a subtle bottom border.
+                    4. Use standard <ul> and <li> tags for all bullet points. Add slight margin-bottom to <li> elements for readability.
+                    5. The overall layout should be structured and visually appealing, using <div> and <span> tags with inline styles.
+                    
+                    CRITICAL INSTRUCTION FOR LINKS (READ CAREFULLY - DO NOT HALLUCINATE): 
+                    1. STRICTLY EXTRACT the ACTUAL URLs (LinkedIn, GitHub, LeetCode, Portfolios, Email, etc.) provided in the "Resume Data" above.
+                    2. DO NOT make up, guess, or use placeholder links (like "github.com/username").
+                    3. Wrap these exact extracted URLs in proper HTML anchor tags. 
+                    Example format: <a href="[INSERT EXACT EXTRACTED URL HERE]" style="color: #2563eb; text-decoration: none;">GitHub</a>
 
-                        The resume should be tailored for the given job description and should highlight the candidate's strengths and relevant experience. The HTML content should be well-formatted and structured, making it easy to read and visually appealing.
-                        The content of resume should be not sound like it's generated by AI and should be as close as possible to a real human-written resume.
-                        you can highlight the content using some colors or different font styles but the overall design should be simple and professional.
-                        The content should be ATS friendly, i.e. it should be easily parsable by ATS systems without losing important information.
-                        The resume should not be so lengthy, it should ideally be 1-2 pages long when converted to PDF. Focus on quality rather than quantity and make sure to include all the relevant information that can increase the candidate's chances of getting an interview call for the given job description.
-                    `
+                    Keep the resume to 1-2 pages maximum. Highlight relevant skills and experiences to maximize the ATS score.`;
 
     try {
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-flash-preview", // Ekdum sahi model!
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -435,21 +520,20 @@ async function generateResumePdf({ resume, selfDescription, jobDescription }) {
 
         const jsonContent = JSON.parse(response.text);
 
-        // Normalize links added by the AI so they become clickable in the generated PDF
-        const safeHtml = normalizeLinksInHtml(jsonContent.html);
+        // 2. MAIN FIX: Yahan se normalizeLinksInHtml HATA DIYA HAI!
+        // Ab hum direct Gemini ka banaya hua clean HTML use karenge.
+        const safeHtml = jsonContent.html;
 
         const pdfBuffer = await generatePdfFromHtml(safeHtml);
 
         return pdfBuffer;
 
     } catch (error) {
-        // Handle Gemini 503 High Demand Error gracefully
         if (error.status === 503 || (error.message && error.message.includes("high demand"))) {
             console.error("⚠️ AI is currently busy:", error.message);
             throw new Error("AI is currently very busy due to high demand. Please wait a few minutes and try downloading again.");
         } 
         
-        // Log other unexpected errors
         console.error("❌ An unexpected error occurred during PDF generation:", error.message);
         throw error;
     }
