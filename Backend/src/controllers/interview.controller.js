@@ -87,6 +87,64 @@ async function generateInterViewReportController(req, res){
     }
 }
 
+
+// /**
+//  * @description controller to generate interview report based on user self description, resume and job description
+//  */
+// async function generateInterViewReportController(req, res){
+//     try {
+//         const resumeFile = req.file;
+
+//         const resumeContent = await (new pdfParse.PDFParse(Uint8Array.from(req.file.buffer))).getText();
+//         const {selfDescription, jobDescription} = req.body;
+
+//         // 1. Get the raw response from the AI
+//         const interViewReportByAi = await generateInterviewReport({
+//             resume: resumeContent.text,
+//             selfDescription,
+//             jobDescription
+//         });
+
+//         // =====================================================================
+//         // 2. SANITIZE THE DATA HERE (Before saving to MongoDB)
+//         // =====================================================================
+//         if (interViewReportByAi.skillGaps && Array.isArray(interViewReportByAi.skillGaps)) {
+//             interViewReportByAi.skillGaps = interViewReportByAi.skillGaps.map(gap => ({
+//                 ...gap,
+//                 severity: gap.severity ? gap.severity.toLowerCase() : 'low'
+//             }));
+//         }
+//         // =====================================================================
+
+//         // 3. Save the sanitized data to the database
+//         const interviewReport = await interviewReportModel.create({
+//             user: req.user.id,
+//             resume: resumeContent.text,
+//             selfDescription,
+//             jobDescription,
+//             ...interViewReportByAi
+//         });
+
+//         // 4. Send the response
+//         res.status(201).json({
+//             message: "Interview report generated successfully",
+//             interviewReport
+//         });
+
+//     } catch (error) {
+//         console.error('❌ Interview report generation failed:', error);
+        
+//         // YAHAN CHANGE HUA HAI: Ab yahan fix 503 ki jagah dynamic status aayega 
+//         // aur frontend ko crash hone se bachayega
+//         const statusCode = error.status || 500;
+        
+//         res.status(statusCode).json({
+//             success: false,
+//             message: error.message || 'Interview service unavailable. Please try again later.'
+//         });
+//     }
+// }
+
 /**
  * @description controller to get interview report by interviewId.
  */
