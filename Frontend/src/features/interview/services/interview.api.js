@@ -112,7 +112,9 @@ export const generateInterviewReport = async ({ jobDescription, selfDescription,
     } catch (error) {
         const exactError = getErrorMessage(error);
         console.error("Generate Report Error:", exactError);
-        throw new Error(exactError); // Taki UI component catch kar sake
+        const errObj = new Error(exactError);
+        if (error && error.response && error.response.status) errObj.status = error.response.status;
+        throw errObj; // Taki UI component catch kar sake
     }
 };
 
@@ -126,7 +128,9 @@ export const getInterviewReportById = async (interviewId) => {
     } catch (error) {
         const exactError = getErrorMessage(error);
         console.error("Get Report By ID Error:", exactError);
-        throw new Error(exactError);
+        const errObj = new Error(exactError);
+        if (error && error.response && error.response.status) errObj.status = error.response.status;
+        throw errObj;
     }
 };
 
@@ -140,7 +144,9 @@ export const getAllInterviewReports = async () => {
     } catch (error) {
         const exactError = getErrorMessage(error);
         console.error("Get All Reports Error:", exactError);
-        throw new Error(exactError);
+        const errObj = new Error(exactError);
+        if (error && error.response && error.response.status) errObj.status = error.response.status;
+        throw errObj;
     }
 };
 
@@ -157,6 +163,8 @@ export const generateResumePdf = async ({ interviewReportId }) => {
         // Blob type requests ke errors thode alag aate hain, par helper unhe handle kar lega
         const exactError = getErrorMessage(error);
         console.error("Generate PDF Error:", exactError);
-        throw new Error(exactError);
+        const errObj = new Error(exactError);
+        if (error && error.response && error.response.status) errObj.status = error.response.status;
+        throw errObj;
     }
 };

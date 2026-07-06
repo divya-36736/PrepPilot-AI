@@ -42,13 +42,21 @@ const interviewReportModel = require("../models/interviewReport.model");
 async function generateInterViewReportController(req, res){
     try {
         const resumeFile = req.file;
+        const { selfDescription, jobDescription } = req.body;
 
-        const resumeContent = await (new pdfParse.PDFParse(Uint8Array.from(req.file.buffer))).getText();
-        const {selfDescription, jobDescription} = req.body;
+        let resumeContentText = '';
+        if (resumeFile && resumeFile.buffer) {
+            // pdf-parse exposes a function that accepts a Buffer and returns parsed data
+            const parsed = await pdfParse(resumeFile.buffer);
+            resumeContentText = parsed && parsed.text ? parsed.text : '';
+        } else {
+            // If no resume uploaded, use selfDescription as fallback for AI input
+            resumeContentText = selfDescription || '';
+        }
 
         // 1. Get the raw response from the AI
         const interViewReportByAi = await generateInterviewReport({
-            resume: resumeContent.text,
+            resume: resumeContentText,
             selfDescription,
             jobDescription
         });
@@ -67,7 +75,7 @@ async function generateInterViewReportController(req, res){
         // 3. Save the sanitized data to the database
         const interviewReport = await interviewReportModel.create({
             user: req.user.id,
-            resume: resumeContent.text,
+            resume: resumeContentText,
             selfDescription,
             jobDescription,
             ...interViewReportByAi
@@ -80,9 +88,11 @@ async function generateInterViewReportController(req, res){
         });
     } catch (error) {
         console.error('Interview report generation failed:', error);
-        res.status(503).json({
-            message: 'Interview service unavailable. Please try again later.',
-            error: error.message || 'Service unavailable'
+        // Use status from the error when available (e.g., AI SDK may set 429/503)
+        const statusCode = error && error.status ? error.status : 503
+        res.status(statusCode).json({
+            message: error.message || 'Interview service unavailable. Please try again later.',
+            error: error && error.stack ? error.stack : undefined
         });
     }
 }

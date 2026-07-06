@@ -288,34 +288,55 @@ async function generateInterviewReport({ resume, selfDescription, jobDescription
     Resume: ${resume}
     Self Description: ${selfDescription}
     Job Description: ${jobDescription}`;
+    const maxAttempts = 3
+    const baseDelayMs = 2500
+    let lastErr = null
 
-    try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash", 
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json",
-                // 3. Pass the native schema directly
-                responseSchema: interviewReportSchema, 
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            const response = await ai.models.generateContent({
+                model: "gemini-2.5-flash",
+                contents: prompt,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: interviewReportSchema,
+                }
+            })
+
+            const parsedResponse = JSON.parse(response.text)
+            console.log("✅ Successfully parsed strict JSON:")
+            console.log(JSON.stringify(parsedResponse, null, 2))
+            return parsedResponse
+
+        } catch (error) {
+            lastErr = error
+            const status = error && error.status ? error.status : null
+
+            // Retry on transient errors: 429 (rate limit), 503 (service unavailable), or network issues
+            const isTransient = status === 429 || status === 503 || /network error/i.test(error.message || '') || /high demand/i.test(error.message || '')
+
+            console.warn(`AI request failed (attempt ${attempt}/${maxAttempts})`, error.message || error)
+
+            if (attempt < maxAttempts && isTransient) {
+                const delay = baseDelayMs * attempt
+                console.log(`Retrying AI call in ${delay}ms...`)
+                // eslint-disable-next-line no-await-in-loop
+                await new Promise(r => setTimeout(r, delay))
+                continue
             }
-        });
 
-        const parsedResponse = JSON.parse(response.text);
-        
-        // Print the actual JSON data to your terminal
-        console.log("✅ Successfully parsed strict JSON:");
-        console.log(JSON.stringify(parsedResponse, null, 2)); 
-        
-        return parsedResponse;
-
-    } catch (error) {
-        if (error.status === 429) {
-            console.error("⚠️ AI API Rate Limit Exceeded. Please wait 1 minute before trying again.");
-        } else {
-            console.error("❌ An unexpected error occurred:", error.message);
+            // If not transient or retries exhausted, throw a clear error with status if present
+            if (status) {
+                const err = new Error(error.message || 'AI service error')
+                err.status = status
+                throw err
+            }
+            throw error
         }
-        throw error; 
     }
+
+    // Should not reach here, but throw last error defensively
+    throw lastErr
 }
 
 // async function generatePdfFromHtml(htmlContent) {
@@ -337,16 +358,66 @@ async function generateInterviewReport({ resume, selfDescription, jobDescription
 //     return pdfBuffer
 // }
 
+// async function generatePdfFromHtml(htmlContent) {
+//     // Cloud server (Render) par Puppeteer chalane ke liye args dena bahut zaroori hai
+//     const browser = await puppeteer.launch({
+//     // 👇 Yeh line Docker ke liye sabse zaroori hai
+//     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
+//     headless: "new",
+//     args: [
+//         '--no-sandbox', 
+//         '--disable-setuid-sandbox',
+//         '--disable-dev-shm-usage' // Ye low-RAM servers ko crash hone se bachata hai
+//     ]
+    
+// });
+//     // 2. SMART CHECK: Kahan chal raha hai code?
+//     if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+//         // ✅ Agar Render/Docker par hai, toh unka path use karega
+//         launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+//     } else {
+//         // ✅ Agar Localhost par hai, toh aapke laptop ka asli Chrome use karega
+//         launchOptions.channel = 'chrome'; 
+//     }
+
+//     // 3. Browser launch karein
+//     const browser = await puppeteer.launch(launchOptions);
+
+//     const page = await browser.newPage();
+//     await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+
+//     const pdfBuffer = await page.pdf({
+//         format: "A4", 
+//         margin: { top: "20mm", bottom: "20mm", left: "15mm", right: "15mm" }
+//     });
+
+//     await browser.close();
+
+//     return pdfBuffer;
+// }
+
 async function generatePdfFromHtml(htmlContent) {
-    // Cloud server (Render) par Puppeteer chalane ke liye args dena bahut zaroori hai
-    const browser = await puppeteer.launch({
-        headless: true,
+    // 1. Basic configurations
+    const launchOptions = {
+        headless: "new",
         args: [
             '--no-sandbox', 
             '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage' // Ye low-RAM servers ko crash hone se bachata hai
+            '--disable-dev-shm-usage'
         ]
-    });
+    };
+
+    // 2. SMART CHECK: Kahan chal raha hai code?
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+        // Agar Render/Docker par hai
+        launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    } else {
+        // Agar Localhost par hai
+        launchOptions.channel = 'chrome'; 
+    }
+
+    // 3. Browser launch karein (Yahan sirf ek baar 'const browser' hai)
+    const browser = await puppeteer.launch(launchOptions);
     
     const page = await browser.newPage();
     await page.setContent(htmlContent, { waitUntil: "networkidle0" });

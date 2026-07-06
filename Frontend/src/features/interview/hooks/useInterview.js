@@ -18,15 +18,41 @@ export const useInterview = () => {
     const generateReport = async ({ jobDescription, selfDescription, resumeFile }) => {
         setLoading(true)
         let response = null
+        const maxRetries = 3
+        const baseDelayMs = 3000
+        let lastError = null
+
         try {
-            response = await generateInterviewReport({ jobDescription, selfDescription, resumeFile })
-            if (response && response.interviewReport) {
-                setReport(response.interviewReport)
-                return response.interviewReport
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    response = await generateInterviewReport({ jobDescription, selfDescription, resumeFile })
+                    if (response && response.interviewReport) {
+                        setReport(response.interviewReport)
+                        return response.interviewReport
+                    }
+                    // If API returned but payload is invalid, stop retrying
+                    lastError = new Error('Interview report response was invalid')
+                    break
+                } catch (err) {
+                    lastError = err
+                    const status = err.status || (err.message && /service unavailable|temporar/i.test(err.message) ? 503 : null)
+
+                    // Retry only on 503 / transient service errors or network failures
+                    const shouldRetry = (status === 503) || /network error/i.test(err.message || '') || /service unavailable/i.test(err.message || '')
+
+                    if (attempt < maxRetries && shouldRetry) {
+                        const delay = baseDelayMs * attempt
+                        // eslint-disable-next-line no-await-in-loop
+                        await new Promise(r => setTimeout(r, delay))
+                        continue
+                    }
+
+                    // Non-retriable or retries exhausted
+                    break
+                }
             }
-            throw new Error('Interview report response was invalid')
-        } catch (error) {
-            console.error('Generate report failed:', error)
+
+            console.error('Generate report failed after retries:', lastError)
             return null
         } finally {
             setLoading(false)
@@ -41,6 +67,7 @@ export const useInterview = () => {
             setReport(response.interviewReport)
         } catch (error) {
             console.log(error)
+            throw error
         } finally {
             setLoading(false)
         }
@@ -55,6 +82,7 @@ export const useInterview = () => {
             setReports(response.interviewReports)
         } catch (error) {
             console.log(error)
+            throw error
         } finally {
             setLoading(false)
         }
@@ -76,6 +104,7 @@ export const useInterview = () => {
         }
         catch (error) {
             console.log(error)
+            throw error;
         } finally {
             setLoading(false)
         }

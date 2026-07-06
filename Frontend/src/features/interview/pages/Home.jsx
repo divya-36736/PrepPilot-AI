@@ -3,16 +3,45 @@ import "../style/home.scss"
 import { useInterview } from '../hooks/useInterview.js'
 import { useNavigate } from 'react-router'
 import toast from 'react-hot-toast';
+import { useAuth } from '../../auth/hooks/useAuth.js';
+
 
 const Home = () => {
 
     const { loading, generateReport,reports } = useInterview()
+    // 'logout' ki jagah 'handleLogout'
+    const { handleLogout } = useAuth();
+
     const [ jobDescription, setJobDescription ] = useState("")
     const [ selfDescription, setSelfDescription ] = useState("")
     const [fileName, setFileName] = useState("");
+
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const resumeInputRef = useRef()
 
     const navigate = useNavigate()
+
+
+
+    const handleUserLogout = async () => {
+        try {
+            // 1. Backend context ka logout chalega
+            await handleLogout(); 
+            
+            // 2. 👇 YEH NAYI LINE: Browser ki memory saaf karegi
+            localStorage.removeItem('user'); 
+            
+            // 3. User ko safely login par bhejegi
+            navigate('/login'); 
+        } catch (error) {
+            console.error("Logout error:", error);
+            
+            // Error aaye tab bhi memory zaroor saaf karo
+            localStorage.removeItem('user'); 
+            navigate('/login'); 
+        }
+    };
+    
 
     const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -97,7 +126,7 @@ const Home = () => {
                             placeholder={`Paste the full job description here...\ne.g. 'Senior Frontend Engineer at Google requires proficiency in React, TypeScript, and large-scale system design...'`}
                             maxLength={5000}
                         />
-                        <div className='char-counter'>0 / 5000 chars</div>
+                        <div className='char-counter'>5000 chars</div>
                     </div>
 
                     {/* Vertical Divider */}
@@ -105,13 +134,55 @@ const Home = () => {
 
                     {/* Right Panel - Profile */}
                     <div className='panel panel--right'>
-                        <div className='panel__header'>
-                            <span className='panel__icon'>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-                            </span>
-                            <h2>Your Profile</h2>
-                        </div>
+                        <div className='panel__header' style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                            
+                            {/* Left side: Icon aur "Your Profile" text */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span className='panel__icon'>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                                </span>
+                                <h2 style={{ margin: 0 }}>Your Profile</h2>
+                            </div>
 
+                            {/* Right side: User Photo aur Dropdown */}
+                            <div style={{ position: 'relative' }}>
+                                {/* Profile Button */}
+                                <button 
+                                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                                >
+                                    <div style={{ 
+                                        width: '38px', height: '38px', borderRadius: '50%', 
+                                        backgroundColor: '#1f2937', border: '2px solid #374151',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                                        fontSize: '18px'
+                                    }}>
+                                        👤
+                                    </div>
+                                </button>
+
+                                {/* Dropdown Menu */}
+                                {isDropdownOpen && (
+                                    <div style={{ 
+                                        position: 'absolute', right: 0, top: '45px', 
+                                        backgroundColor: '#111827', border: '1px solid #374151', 
+                                        borderRadius: '8px', padding: '8px 0', minWidth: '150px', 
+                                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)', zIndex: 50 
+                                    }}>
+                                        <button
+                                            onClick={handleUserLogout}
+                                            style={{ 
+                                                width: '100%', textAlign: 'left', padding: '12px 16px', 
+                                                background: 'none', border: 'none', color: '#f87171', 
+                                                cursor: 'pointer', fontSize: '14px', fontWeight: '500' 
+                                            }}
+                                        >
+                                            🚪 Logout
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                         {/* Upload Resume */}
                         <div className='upload-section'>
                             <label className='section-label'>
