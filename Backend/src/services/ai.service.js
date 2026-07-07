@@ -404,7 +404,9 @@ async function generatePdfFromHtml(htmlContent) {
             '--no-sandbox', 
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
-            '--disable-gpu'
+            '--disable-gpu',
+            '--single-process', // 👈 RAM bachane ke liye sabse zaroori
+            '--no-zygote'
         ]
     };
 
@@ -416,6 +418,8 @@ async function generatePdfFromHtml(htmlContent) {
         // Agar Localhost par hai
         launchOptions.channel = 'chrome'; 
     }
+
+    console.log("🚀 Launching Puppeteer with options:", JSON.stringify(launchOptions));
 
     // 3. Browser launch karein (Yahan sirf ek baar 'const browser' hai)
     const browser = await puppeteer.launch(launchOptions);
