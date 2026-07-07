@@ -405,7 +405,6 @@ async function generatePdfFromHtml(htmlContent) {
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
             '--disable-gpu',
-            '--single-process', // 👈 RAM bachane ke liye sabse zaroori
             '--no-zygote'
         ]
     };
